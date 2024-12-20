@@ -15,7 +15,8 @@
 package com.snowplowanalytics.snowplow.rdbloader.transformer.stream.kafka
 
 import cats.effect._
-import com.snowplowanalytics.snowplow.rdbloader.azure.AzureBlobStorage
+// import com.snowplowanalytics.snowplow.rdbloader.azure.AzureBlobStorage
+import com.snowplowanalytics.snowplow.rdbloader.aws.S3
 import com.snowplowanalytics.snowplow.rdbloader.common.cloud.BlobStorage
 import com.snowplowanalytics.snowplow.rdbloader.transformer.stream.common.parquet.ParquetOps
 import com.snowplowanalytics.snowplow.rdbloader.transformer.stream.common.{Config, Run}
@@ -42,10 +43,14 @@ object Main extends IOApp {
 
   private def createBlobStorage[F[_]: Async](output: Config.Output): Resource[F, BlobStorage[F]] =
     output match {
-      case c: Config.Output.AzureBlobStorage =>
-        AzureBlobStorage.createDefault[F](c.path)
+      case s3Output: Config.Output.S3 =>
+        S3.blobStorage[F](s3Output.region.name)
       case _ =>
-        Resource.eval(Async[F].raiseError(new IllegalArgumentException(s"Output is not Azure Blob Storage")))
+        Resource.eval(Async[F].raiseError(new IllegalArgumentException(s"Output is not S3")))
+      // case c: Config.Output.AzureBlobStorage =>
+      //   AzureBlobStorage.createDefault[F](c.path)
+      // case _ =>
+      //   Resource.eval(Async[F].raiseError(new IllegalArgumentException(s"Output is not Azure Blob Storage")))
     }
 
   private def parquetOps: ParquetOps = new ParquetOps {
