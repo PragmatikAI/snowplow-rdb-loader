@@ -347,7 +347,9 @@ object Dependencies {
   )
 
   val transformerKafkaDependencies = Seq(
-    hadoopAzure
+    hadoopAzure,
+    dynamodb, // This dependency is required by hadoop-aws. It throws exception when it is not added.
+    hadoopAws
   )
 
   val commonStreamTransformerExclusions =

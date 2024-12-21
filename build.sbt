@@ -34,7 +34,7 @@ lazy val root = project.in(file("."))
     commonTransformerStream,
     loader,
     databricksLoader,
-    redshiftLoader,
+    // redshiftLoader,
     snowflakeLoader,
     transformerBatch,
     transformerKinesis,
@@ -89,22 +89,22 @@ lazy val loader = project
     azure % "compile->compile;test->test"
   )
 
-lazy val redshiftLoader = project
-  .in(file("modules/redshift-loader"))
-  .settings(BuildSettings.redshiftBuildSettings)
-  .settings(addCompilerPlugin(Dependencies.betterMonadicFor))
-  .settings(libraryDependencies ++= Dependencies.redshiftDependencies)
-  .dependsOn(loader % "compile->compile;test->test;runtime->runtime")
-  .enablePlugins(JavaAppPackaging, SnowplowDockerPlugin, BuildInfoPlugin)
+// lazy val redshiftLoader = project
+//   .in(file("modules/redshift-loader"))
+//   .settings(BuildSettings.redshiftBuildSettings)
+//   .settings(addCompilerPlugin(Dependencies.betterMonadicFor))
+//   .settings(libraryDependencies ++= Dependencies.redshiftDependencies)
+//   .dependsOn(loader % "compile->compile;test->test;runtime->runtime")
+//   .enablePlugins(JavaAppPackaging, SnowplowDockerPlugin, BuildInfoPlugin)
 
-lazy val redshiftLoaderDistroless = project
-  .in(file("modules/distroless/redshift-loader"))
-  .settings(sourceDirectory := (redshiftLoader / sourceDirectory).value)
-  .settings(BuildSettings.redshiftBuildSettings)
-  .settings(addCompilerPlugin(Dependencies.betterMonadicFor))
-  .settings(libraryDependencies ++= Dependencies.redshiftDependencies)
-  .dependsOn(loader % "compile->compile;test->test;runtime->runtime")
-  .enablePlugins(JavaAppPackaging, SnowplowDistrolessDockerPlugin, BuildInfoPlugin)
+// lazy val redshiftLoaderDistroless = project
+//   .in(file("modules/distroless/redshift-loader"))
+//   .settings(sourceDirectory := (redshiftLoader / sourceDirectory).value)
+//   .settings(BuildSettings.redshiftBuildSettings)
+//   .settings(addCompilerPlugin(Dependencies.betterMonadicFor))
+//   .settings(libraryDependencies ++= Dependencies.redshiftDependencies)
+//   .dependsOn(loader % "compile->compile;test->test;runtime->runtime")
+//   .enablePlugins(JavaAppPackaging, SnowplowDistrolessDockerPlugin, BuildInfoPlugin)
 
 lazy val snowflakeLoader = project
   .in(file("modules/snowflake-loader"))
@@ -189,7 +189,7 @@ lazy val transformerKafka = project
   .settings(addCompilerPlugin(Dependencies.betterMonadicFor))
   .settings(libraryDependencies ++= Dependencies.transformerKafkaDependencies)
   .settings(excludeDependencies ++= Dependencies.commonStreamTransformerExclusions)
-  .dependsOn(commonTransformerStream % "compile->compile;test->test;runtime->runtime", azure % "compile->compile;test->test;runtime->runtime")
+  .dependsOn(commonTransformerStream % "compile->compile;test->test;runtime->runtime", azure % "compile->compile;test->test;runtime->runtime", aws % "compile->compile;test->test;runtime->runtime")
   .enablePlugins(JavaAppPackaging, SnowplowDockerPlugin, BuildInfoPlugin)
 
 
@@ -200,5 +200,5 @@ lazy val transformerKafkaDistroless = project
   .settings(addCompilerPlugin(Dependencies.betterMonadicFor))
   .settings(libraryDependencies ++= Dependencies.transformerKafkaDependencies)
   .settings(excludeDependencies ++= Dependencies.commonStreamTransformerExclusions)
-  .dependsOn(commonTransformerStream % "compile->compile;test->test;runtime->runtime", azure % "compile->compile;test->test")
+  .dependsOn(commonTransformerStream % "compile->compile;test->test;runtime->runtime", azure % "compile->compile;test->test", aws % "compile->compile;test->test;runtime->runtime")
   .enablePlugins(JavaAppPackaging, SnowplowDistrolessDockerPlugin, BuildInfoPlugin)
