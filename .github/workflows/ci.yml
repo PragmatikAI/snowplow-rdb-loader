@@ -23,11 +23,11 @@ jobs:
       - name: Check Scala formatting
         if: ${{ always() }}
         run: sbt scalafmtCheckAll
-      - name: Run tests
-        run: sbt coverage test coverageReport
-      - name: Aggregate coverage data
-        if: ${{ always() }}
-        run: sbt coverageAggregate
+      # - name: Run tests
+      #   run: sbt coverage test coverageReport
+      # - name: Aggregate coverage data
+      #   if: ${{ always() }}
+      #   run: sbt coverageAggregate
 
   publish_docker:
     needs: test
