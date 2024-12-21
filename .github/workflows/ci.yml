@@ -39,11 +39,6 @@ jobs:
     strategy:
       matrix:
         app:
-          - redshiftLoader
-          - snowflakeLoader
-          - databricksLoader
-          - transformerKinesis
-          - transformerPubsub
           - transformerKafka
     steps:
       - name: Checkout Github
@@ -53,10 +48,10 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
-      - name: Get the latest Databricks JDBC driver
-        run: |
-          curl https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.33/DatabricksJDBC42-2.6.33.1055.zip --output DatabricksJDBC42.jar.zip
-          unzip DatabricksJDBC42.jar.zip
+      # - name: Get the latest Databricks JDBC driver
+      #   run: |
+      #     curl https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.33/DatabricksJDBC42-2.6.33.1055.zip --output DatabricksJDBC42.jar.zip
+      #     unzip DatabricksJDBC42.jar.zip
       - name: Docker login
         uses: docker/login-action@v1
         with:
@@ -88,7 +83,8 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ${{ steps.packageName.outputs.package_name }}
+          # images: ${{ steps.packageName.outputs.package_name }}
+          images: pragmatikai/transformer-kafka
           tags: |
             type=raw,value=latest,enable=${{ !contains(steps.ver.outputs.tag, 'rc') }}
             type=raw,value=latest-focal,enable=${{ !contains(steps.ver.outputs.tag, 'rc') }}
@@ -96,16 +92,16 @@ jobs:
             type=raw,value=${{ steps.ver.outputs.tag }}-focal
           flavor: |
             latest=false
-      - name: Docker metadata distroless
-        id: distroless-meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ${{ steps.packageName.outputs.package_name }}
-          tags: |
-            type=raw,value=latest-distroless,enable=${{ !contains(steps.ver.outputs.tag, 'rc') }}
-            type=raw,value=${{ steps.ver.outputs.tag }}-distroless
-          flavor: |
-            latest=false
+      # - name: Docker metadata distroless
+      #   id: distroless-meta
+      #   uses: docker/metadata-action@v3
+      #   with:
+      #     images: ${{ steps.packageName.outputs.package_name }}
+      #     tags: |
+      #       type=raw,value=latest-distroless,enable=${{ !contains(steps.ver.outputs.tag, 'rc') }}
+      #       type=raw,value=${{ steps.ver.outputs.tag }}-distroless
+      #     flavor: |
+      #       latest=false
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -118,72 +114,72 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8
           tags: ${{ steps.meta.outputs.tags }}
           push: true
-      - name: Push distroless image
-        uses: docker/build-push-action@v2
-        with:
-          context: ${{ steps.baseDirectoryDistroless.outputs.directory }}/target/docker/stage
-          file: ${{ steps.baseDirectoryDistroless.outputs.directory }}/target/docker/stage/Dockerfile
-          platforms: linux/amd64,linux/arm64/v8
-          tags: ${{ steps.distroless-meta.outputs.tags }}
-          push: true
-      - name: Build local distroless image, which is needed to run Snyk
-        if: ${{ !contains(github.ref_name, 'rc') }}
-        run: sbt "project ${{ matrix.app }}Distroless" docker:publishLocal
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/docker@master
-        if: ${{ !contains(github.ref_name, 'rc') }}
-        with:
-          image: "${{ steps.packageName.outputs.package_name }}:${{ github.ref_name }}-distroless"
-          args: "--app-vulns --org=data-processing-new"
-          command: monitor
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      # - name: Push distroless image
+      #   uses: docker/build-push-action@v2
+      #   with:
+      #     context: ${{ steps.baseDirectoryDistroless.outputs.directory }}/target/docker/stage
+      #     file: ${{ steps.baseDirectoryDistroless.outputs.directory }}/target/docker/stage/Dockerfile
+      #     platforms: linux/amd64,linux/arm64/v8
+      #     tags: ${{ steps.distroless-meta.outputs.tags }}
+      #     push: true
+      # - name: Build local distroless image, which is needed to run Snyk
+      #   if: ${{ !contains(github.ref_name, 'rc') }}
+      #   run: sbt "project ${{ matrix.app }}Distroless" docker:publishLocal
+      # - name: Run Snyk to check for vulnerabilities
+      #   uses: snyk/actions/docker@master
+      #   if: ${{ !contains(github.ref_name, 'rc') }}
+      #   with:
+      #     image: "${{ steps.packageName.outputs.package_name }}:${{ github.ref_name }}-distroless"
+      #     args: "--app-vulns --org=data-processing-new"
+      #     command: monitor
+      #   env:
+      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-  create_release:
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout Github
-      uses: actions/checkout@v2
-    - uses: coursier/cache-action@v6
-    - name: Set up JDK 11 for loader and streaming transformer
-      uses: actions/setup-java@v1
-      with:
-        java-version: 11
-    - name: Get the latest Databricks JDBC driver
-      run: |
-        curl https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.33/DatabricksJDBC42-2.6.33.1055.zip --output DatabricksJDBC42.jar.zip
-        unzip DatabricksJDBC42.jar.zip
-    - name: Build jar files
-      env:
-        SKIP_TEST: true
-      run: |
-        sbt \
-        'project redshiftLoader; assembly' \
-        'project snowflakeLoader; assembly' \
-        'project databricksLoader; assembly' \
-        'project transformerBatch; assembly' \
-        'project transformerKinesis; assembly' \
-        'project transformerPubsub; assembly' \
-        'project transformerKafka; assembly'
-    - name: Get current version
-      id: ver
-      run: echo "::set-output name=project_version::${GITHUB_REF#refs/tags/}"
-    - name: Create GitHub release and attach jars
-      uses: softprops/action-gh-release@v1
-      with:
-        draft: true
-        prerelease: true
-        name: ${{ steps.ver.outputs.project_version }}
-        tag_name: ${{ steps.ver.outputs.project_version }}
-        files: |
-          modules/redshift-loader/target/scala-2.12/snowplow-redshift-loader-${{ steps.ver.outputs.project_version }}.jar
-          modules/snowflake-loader/target/scala-2.12/snowplow-snowflake-loader-${{ steps.ver.outputs.project_version }}.jar
-          modules/databricks-loader/target/scala-2.12/snowplow-databricks-loader-${{ steps.ver.outputs.project_version }}.jar
-          modules/transformer-batch/target/scala-2.12/snowplow-transformer-batch-${{ steps.ver.outputs.project_version }}.jar
-          modules/transformer-kinesis/target/scala-2.12/snowplow-transformer-kinesis-${{ steps.ver.outputs.project_version }}.jar
-          modules/transformer-pubsub/target/scala-2.12/snowplow-transformer-pubsub-${{ steps.ver.outputs.project_version }}.jar
-          modules/transformer-kafka/target/scala-2.12/snowplow-transformer-kafka-${{ steps.ver.outputs.project_version }}.jar
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # create_release:
+  #   needs: test
+  #   if: startsWith(github.ref, 'refs/tags/')
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout Github
+  #     uses: actions/checkout@v2
+  #   - uses: coursier/cache-action@v6
+  #   - name: Set up JDK 11 for loader and streaming transformer
+  #     uses: actions/setup-java@v1
+  #     with:
+  #       java-version: 11
+  #   - name: Get the latest Databricks JDBC driver
+  #     run: |
+  #       curl https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.33/DatabricksJDBC42-2.6.33.1055.zip --output DatabricksJDBC42.jar.zip
+  #       unzip DatabricksJDBC42.jar.zip
+  #   - name: Build jar files
+  #     env:
+  #       SKIP_TEST: true
+  #     run: |
+  #       sbt \
+  #       'project redshiftLoader; assembly' \
+  #       'project snowflakeLoader; assembly' \
+  #       'project databricksLoader; assembly' \
+  #       'project transformerBatch; assembly' \
+  #       'project transformerKinesis; assembly' \
+  #       'project transformerPubsub; assembly' \
+  #       'project transformerKafka; assembly'
+  #   - name: Get current version
+  #     id: ver
+  #     run: echo "::set-output name=project_version::${GITHUB_REF#refs/tags/}"
+  #   - name: Create GitHub release and attach jars
+  #     uses: softprops/action-gh-release@v1
+  #     with:
+  #       draft: true
+  #       prerelease: true
+  #       name: ${{ steps.ver.outputs.project_version }}
+  #       tag_name: ${{ steps.ver.outputs.project_version }}
+  #       files: |
+  #         modules/redshift-loader/target/scala-2.12/snowplow-redshift-loader-${{ steps.ver.outputs.project_version }}.jar
+  #         modules/snowflake-loader/target/scala-2.12/snowplow-snowflake-loader-${{ steps.ver.outputs.project_version }}.jar
+  #         modules/databricks-loader/target/scala-2.12/snowplow-databricks-loader-${{ steps.ver.outputs.project_version }}.jar
+  #         modules/transformer-batch/target/scala-2.12/snowplow-transformer-batch-${{ steps.ver.outputs.project_version }}.jar
+  #         modules/transformer-kinesis/target/scala-2.12/snowplow-transformer-kinesis-${{ steps.ver.outputs.project_version }}.jar
+  #         modules/transformer-pubsub/target/scala-2.12/snowplow-transformer-pubsub-${{ steps.ver.outputs.project_version }}.jar
+  #         modules/transformer-kafka/target/scala-2.12/snowplow-transformer-kafka-${{ steps.ver.outputs.project_version }}.jar
+  #     env:
+  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
