@@ -15,6 +15,7 @@
 package com.snowplowanalytics.snowplow.rdbloader.transformer.stream.kafka
 
 import cats.effect._
+import com.snowplowanalytics.snowplow.rdbloader.azure.AzureBlobStorage
 import com.snowplowanalytics.snowplow.rdbloader.aws._
 import com.snowplowanalytics.snowplow.rdbloader.common.cloud.BlobStorage
 import com.snowplowanalytics.snowplow.rdbloader.transformer.stream.common.parquet.ParquetOps
@@ -51,13 +52,12 @@ object Main extends IOApp {
   private def parquetOps: ParquetOps = new ParquetOps {
 
     override def transformPath(p: String): String =
-    ""
-      // AzureBlobStorage.PathParts.parse(p).toParquetPath
+      AzureBlobStorage.PathParts.parse(p).toParquetPath
 
     override def hadoopConf: Configuration = {
       val hadoopConf = new Configuration()
-      // hadoopConf.set("fs.azure.account.auth.type", "Custom")
-      // hadoopConf.set("fs.azure.account.oauth.provider.type", "com.snowplowanalytics.snowplow.rdbloader.azure.AzureTokenProvider")
+      hadoopConf.set("fs.azure.account.auth.type", "Custom")
+      hadoopConf.set("fs.azure.account.oauth.provider.type", "com.snowplowanalytics.snowplow.rdbloader.azure.AzureTokenProvider")
       hadoopConf
     }
 
